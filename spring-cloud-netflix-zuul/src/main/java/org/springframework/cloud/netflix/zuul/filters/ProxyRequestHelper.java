@@ -54,7 +54,7 @@ public class ProxyRequestHelper {
 	 */
 	public static final String IGNORED_HEADERS = "ignoredHeaders";
 
-	private static final String HEADERS_WITH_IGNORED_VALUES = "headersWithIgnoredValues";
+	public static final String HEADERS_WITH_IGNORED_VALUES = "headersWithIgnoredValues";
 
 	private Set<String> ignoredHeaders = new LinkedHashSet<>();
 
@@ -190,7 +190,7 @@ public class ProxyRequestHelper {
 		return headers.contains(headerName.toLowerCase());
 	}
 
-	public void addHeadersWhereValuesShouldBeIgnored(Set<String> names) {
+	public void addHeadersWhichValuesShouldBeIgnored(Set<String> names) {
 		if (names.isEmpty()) {
 			return;
 		}

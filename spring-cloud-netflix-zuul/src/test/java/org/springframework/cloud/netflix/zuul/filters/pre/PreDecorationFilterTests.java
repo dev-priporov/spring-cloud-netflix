@@ -25,7 +25,9 @@ import java.util.Set;
 import com.netflix.util.Pair;
 import com.netflix.zuul.context.RequestContext;
 
+import org.hamcrest.Matchers;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -38,9 +40,8 @@ import org.springframework.cloud.netflix.zuul.filters.discovery.DiscoveryClientR
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.util.MultiValueMap;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.Assert.*;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.FORWARD_TO_KEY;
 import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.PRE_TYPE;
@@ -619,9 +620,9 @@ public class PreDecorationFilterTests {
   @Test
   public void headersAreProperlyIgnored() throws Exception {
     proxyRequestHelper.addIgnoredHeaders("x-forwarded-host", "x-forwarded-port");
-    request.addHeader("x-forwarded-host", "B,127.0.0.1:8080");
-    request.addHeader("x-forwarded-port", "A,8080");
-    request.addHeader("x-forwarded-proto", "C,http");
+    request.addHeader("X-Forwarded-host", "B,127.0.0.1:8080");
+    request.addHeader("X-Forwarded-port", "A,8080");
+    request.addHeader("X-Forwarded-proto", "C,http");
 
     MultiValueMap<String, String> result = proxyRequestHelper
             .buildZuulRequestHeaders(request);
@@ -630,6 +631,41 @@ public class PreDecorationFilterTests {
     assertFalse(result.containsKey("x-forwarded-host"));
     assertFalse(result.containsKey("x-forwarded-port"));
   }
+
+  @Test
+  public void HeadersWithIgnoredValuesHa() throws Exception {
+		proxyRequestHelper.addHeadersWhichValuesShouldBeIgnored(new HashSet<>(Arrays.asList("X-Forwarded-Host")));
+		request.addHeader("X-Forwarded-Host", "B");
+		request.addHeader("X-Forwarded-Port", "A");
+
+    MultiValueMap<String, String> result = proxyRequestHelper
+            .buildZuulRequestHeaders(request);
+
+    assertThat(result.keySet(), containsInAnyOrder("X-Forwarded-Host", "X-Forwarded-Port", "Accept-Encoding"));
+    assertThat(result.values(), containsInAnyOrder("A"));
+  }
+
+	@Test
+	public void methodRunProperlyPutsHeadersWithIgnoredValuesInRequestContext() throws Exception {
+		// when
+		properties.setHeadersWhichValuesShouldBeIgnored(new HashSet<>(Arrays.asList("X-Forwarded-Host")));
+		request.addHeader("X-Forwarded-Host", "B");
+		request.addHeader("X-Forwarded-Port", "A");
+		request.addHeader("X-Forwarded-Proto", "C");
+		this.routeLocator.addRoute(
+						new ZuulRoute("foo", "/foo/**", "foo", null, false, null, null));
+		request.setRequestURI("/foo/**");
+
+		// action
+		this.filter.run();
+
+		// then
+		RequestContext ctx = RequestContext.getCurrentContext();
+		@SuppressWarnings("unchecked")
+		Set<String> result = (Set<String>) ctx.get(ProxyRequestHelper.HEADERS_WITH_IGNORED_VALUES);
+
+		assertThat(result, containsInAnyOrder("x-forwarded-host"));
+	}
 
   private Object getHeader(List<Pair<String, String>> headers, String key) {
 		String value = null;

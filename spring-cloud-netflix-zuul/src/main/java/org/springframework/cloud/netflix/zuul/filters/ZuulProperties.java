@@ -197,11 +197,11 @@ public class ZuulProperties {
 		this.ignoredHeaders.addAll(ignoredHeaders);
 	}
 
-	public Set<String> getIgnoreValueForHeaders() {
+	public Set<String> getHeadersWhichValuesShouldBeIgnoredgetIgnoreValueForHeaders() {
 		return ignoreValueForHeaders;
 	}
 
-	public void setIgnoreValueForHeaders(Set<String> ignoreValueForHeaders) {
+	public void setHeadersWhichValuesShouldBeIgnored(Set<String> ignoreValueForHeaders) {
 		this.ignoreValueForHeaders = ignoreValueForHeaders;
 	}
 

@@ -105,7 +105,9 @@ public class PreDecorationFilter extends ZuulFilter {
 				else {
 					this.proxyRequestHelper.addIgnoredHeaders(route.getSensitiveHeaders().toArray(new String[0]));
 				}
-				this.proxyRequestHelper.addHeadersWhereValuesShouldBeIgnored(this.properties.getIgnoreValueForHeaders());
+				this.proxyRequestHelper
+						.addHeadersWhichValuesShouldBeIgnored(this.properties
+								.getHeadersWhichValuesShouldBeIgnoredgetIgnoreValueForHeaders());
 
 				if (route.getRetryable() != null) {
 					ctx.put(RETRYABLE_KEY, route.getRetryable());
