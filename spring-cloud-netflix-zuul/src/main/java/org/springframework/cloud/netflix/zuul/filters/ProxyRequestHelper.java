@@ -16,18 +16,13 @@
 
 package org.springframework.cloud.netflix.zuul.filters;
 
+import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.REQUEST_URI_KEY;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -44,10 +39,6 @@ import org.springframework.web.util.WebUtils;
 import com.netflix.zuul.context.RequestContext;
 import com.netflix.zuul.util.HTTPRequestUtils;
 
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.REQUEST_URI_KEY;
-import static org.springframework.http.HttpHeaders.CONTENT_ENCODING;
-import static org.springframework.http.HttpHeaders.CONTENT_LENGTH;
-
 /**
  * @author Dave Syer
  * @author Marcos Barbero
@@ -62,6 +53,8 @@ public class ProxyRequestHelper {
 	 * Pre-filters can set this up as a set of lowercase strings.
 	 */
 	public static final String IGNORED_HEADERS = "ignoredHeaders";
+
+	private static final String HEADERS_WITH_IGNORED_VALUES = "headersWithIgnoredValues";
 
 	private Set<String> ignoredHeaders = new LinkedHashSet<>();
 
@@ -132,12 +125,17 @@ public class ProxyRequestHelper {
 		if (headerNames != null) {
 			while (headerNames.hasMoreElements()) {
 				String name = headerNames.nextElement();
-				if (isIncludedHeader(name)) {
-					Enumeration<String> values = request.getHeaders(name);
-					while (values.hasMoreElements()) {
-						String value = values.nextElement();
-						headers.add(name, value);
-					}
+				if (!isIncludedHeader(name)) {
+					continue;
+				}
+				Enumeration<String> values = request.getHeaders(name);
+				if (isHeaderWithIgnoredValue(name)) {
+					headers.add(name, "");
+					continue;
+				}
+				while (values.hasMoreElements()) {
+					String value = values.nextElement();
+					headers.add(name, value);
 				}
 			}
 		}
@@ -180,6 +178,33 @@ public class ProxyRequestHelper {
 			}
 		}
 		context.setResponseGZipped(isOriginResponseGzipped);
+	}
+
+	public boolean isHeaderWithIgnoredValue(String headerName) {
+		RequestContext ctx = RequestContext.getCurrentContext();
+		if (!ctx.containsKey(HEADERS_WITH_IGNORED_VALUES)) {
+			return false;
+		}
+		@SuppressWarnings("unchecked")
+		Set<String> headers = (Set<String>) ctx.get(HEADERS_WITH_IGNORED_VALUES);
+		return headers.contains(headerName.toLowerCase());
+	}
+
+	public void addHeadersWhereValuesShouldBeIgnored(Set<String> names) {
+		if (names.isEmpty()) {
+			return;
+		}
+		RequestContext ctx = RequestContext.getCurrentContext();
+		Set<String> lowerCaseNames = names.stream().map(String::toLowerCase)
+				.collect(Collectors.toSet());
+		if (!ctx.containsKey(HEADERS_WITH_IGNORED_VALUES)) {
+			ctx.set(HEADERS_WITH_IGNORED_VALUES, lowerCaseNames);
+		}
+		else {
+			@SuppressWarnings("unchecked")
+			Set<String> headers = (Set<String>) ctx.get(HEADERS_WITH_IGNORED_VALUES);
+			headers.addAll(lowerCaseNames);
+		}
 	}
 
 	public void addIgnoredHeaders(String... names) {

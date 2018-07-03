@@ -101,13 +101,19 @@ public class ZuulProperties {
 	private Set<String> ignoredHeaders = new LinkedHashSet<>();
 
 	/**
+	 * Names of HTTP headers to ignore received values in response (i.e. leave them out of downstream
+	 * requests and drop them from downstream responses).
+	 */
+	private Set<String> ignoreValueForHeaders = new LinkedHashSet<>();
+
+	/**
 	 * Flag to say that SECURITY_HEADERS are added to ignored headers if spring security is on the classpath.
 	 * By setting ignoreSecurityHeaders to false we can switch off this default behaviour. This should be used together with
 	 * disabling the default spring security headers
 	 * see https://docs.spring.io/spring-security/site/docs/current/reference/html/headers.html#default-security-headers
 	 */
 	private boolean ignoreSecurityHeaders = true;
-	
+
 	/**
 	 * Flag to force the original query string encoding when building the backend URI in
 	 * SimpleHostRoutingFilter. When activated, query string will be built using
@@ -157,7 +163,6 @@ public class ZuulProperties {
 	private boolean sslHostnameValidationEnabled =true;
 
 	private ExecutionIsolationStrategy ribbonIsolationStrategy = SEMAPHORE;
-	
 	private HystrixSemaphore semaphore = new HystrixSemaphore();
 
 	private HystrixThreadPool threadPool = new HystrixThreadPool();
@@ -190,6 +195,14 @@ public class ZuulProperties {
 
 	public void setIgnoredHeaders(Set<String> ignoredHeaders) {
 		this.ignoredHeaders.addAll(ignoredHeaders);
+	}
+
+	public Set<String> getIgnoreValueForHeaders() {
+		return ignoreValueForHeaders;
+	}
+
+	public void setIgnoreValueForHeaders(Set<String> ignoreValueForHeaders) {
+		this.ignoreValueForHeaders = ignoreValueForHeaders;
 	}
 
 	@PostConstruct

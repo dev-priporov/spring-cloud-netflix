@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.netflix.zuul.filters.pre;
 
+import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.*;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 
@@ -35,26 +37,6 @@ import org.springframework.web.util.UrlPathHelper;
 
 import com.netflix.zuul.ZuulFilter;
 import com.netflix.zuul.context.RequestContext;
-
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.FORWARD_LOCATION_PREFIX;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.FORWARD_TO_KEY;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.HTTPS_PORT;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.HTTPS_SCHEME;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.HTTP_PORT;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.HTTP_SCHEME;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.PRE_DECORATION_FILTER_ORDER;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.PRE_TYPE;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.PROXY_KEY;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.REQUEST_URI_KEY;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.RETRYABLE_KEY;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.SERVICE_HEADER;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.SERVICE_ID_HEADER;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.SERVICE_ID_KEY;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.X_FORWARDED_FOR_HEADER;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.X_FORWARDED_HOST_HEADER;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.X_FORWARDED_PORT_HEADER;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.X_FORWARDED_PREFIX_HEADER;
-import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.X_FORWARDED_PROTO_HEADER;
 
 /**
  * Pre {@link ZuulFilter} that determines where and how to route based on the supplied {@link RouteLocator}.
@@ -123,6 +105,7 @@ public class PreDecorationFilter extends ZuulFilter {
 				else {
 					this.proxyRequestHelper.addIgnoredHeaders(route.getSensitiveHeaders().toArray(new String[0]));
 				}
+				this.proxyRequestHelper.addHeadersWhereValuesShouldBeIgnored(this.properties.getIgnoreValueForHeaders());
 
 				if (route.getRetryable() != null) {
 					ctx.put(RETRYABLE_KEY, route.getRetryable());
@@ -196,11 +179,11 @@ public class PreDecorationFilter extends ZuulFilter {
 		String host = toHostHeader(request);
 		String port = String.valueOf(request.getServerPort());
 		String proto = request.getScheme();
-		if (hasHeader(request, X_FORWARDED_HOST_HEADER)) {
+		if (hasHeader(request, X_FORWARDED_HOST_HEADER) && !isHeaderValueIgnored(X_FORWARDED_HOST_HEADER)) {
 			host = request.getHeader(X_FORWARDED_HOST_HEADER) + "," + host;
 		}
 		if (!hasHeader(request, X_FORWARDED_PORT_HEADER)) {
-			if (hasHeader(request, X_FORWARDED_PROTO_HEADER)) {
+			if (hasHeader(request, X_FORWARDED_PROTO_HEADER) && !isHeaderValueIgnored(X_FORWARDED_PROTO_HEADER)) {
 				StringBuilder builder = new StringBuilder();
 				for (String previous : StringUtils.commaDelimitedListToStringArray(request.getHeader(X_FORWARDED_PROTO_HEADER))) {
 					if (builder.length()>0) {
@@ -212,15 +195,21 @@ public class PreDecorationFilter extends ZuulFilter {
 				port = builder.toString();
 			}
 		} else {
-			port = request.getHeader(X_FORWARDED_PORT_HEADER) + "," + port;
+			if(!isHeaderValueIgnored(X_FORWARDED_PORT_HEADER)){
+				port = request.getHeader(X_FORWARDED_PORT_HEADER) + "," + port;
+			}
 		}
-		if (hasHeader(request, X_FORWARDED_PROTO_HEADER)) {
+		if (hasHeader(request, X_FORWARDED_PROTO_HEADER) && !isHeaderValueIgnored(X_FORWARDED_PROTO_HEADER)) {
 			proto = request.getHeader(X_FORWARDED_PROTO_HEADER) + "," + proto;
 		}
 		ctx.addZuulRequestHeader(X_FORWARDED_HOST_HEADER, host);
 		ctx.addZuulRequestHeader(X_FORWARDED_PORT_HEADER, port);
 		ctx.addZuulRequestHeader(X_FORWARDED_PROTO_HEADER, proto);
 		addProxyPrefix(ctx, route);
+	}
+
+	private boolean isHeaderValueIgnored(String headerName){
+		return proxyRequestHelper.isHeaderWithIgnoredValue(headerName);
 	}
 
 	private boolean hasHeader(HttpServletRequest request, String name) {
