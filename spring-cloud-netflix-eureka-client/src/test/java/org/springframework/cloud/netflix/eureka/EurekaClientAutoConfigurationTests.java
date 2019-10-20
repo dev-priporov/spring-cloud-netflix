@@ -161,7 +161,15 @@ public class EurekaClientAutoConfigurationTests {
 
 	@Test
 	public void securePortPeriods() {
-		testSecurePort("server.port");
+		testSecurePort("eureka.instance.secure-port");
+	}
+
+	@Test
+	public void defaultSecurePort() {
+		TestPropertyValues.of("eureka.instance.secure-port-enabled=true")
+				.applyTo(this.context);
+		setupContext();
+		assertThat(getInstanceConfig().getSecurePort()).isEqualTo(443);
 	}
 
 	@Test
